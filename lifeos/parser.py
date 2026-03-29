@@ -6,6 +6,7 @@ import dateparser
 from typing import Optional
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5:7b"
 
 def safe_parse(raw: str) -> dict:
     raw = re.sub(r"```json|```", "", raw).strip()
@@ -17,7 +18,7 @@ def safe_parse(raw: str) -> dict:
 def call_ollama(user_input: str) -> dict:
     prompt = f"""You are a task extraction assistant. Extract structured data from user input. Return ONLY valid JSON. No explanation. No markdown. No extra text. Format: {{"tasks": [{{"title": "short task title", "due_date": "natural language date or null"}}]}} Rules: - Keep titles short (3-6 words max) - Only extract actionable tasks - If no tasks found, return {{"tasks": []}} - Do not hallucinate tasks not mentioned User input: "{user_input}" """
     try:
-        response = requests.post(OLLAMA_URL, json={"model": "llama3.2", "prompt": prompt}, timeout=30)
+        response = requests.post(OLLAMA_URL, json={"model": OLLAMA_MODEL, "prompt": prompt}, timeout=60)
         if response.status_code == 200:
             # Ollama returns NDJSON (newline-delimited JSON) streaming responses
             full_response = ""
