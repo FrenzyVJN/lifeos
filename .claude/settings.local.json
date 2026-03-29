@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tmux new-session:*)",
+      "Bash(tmux send-keys:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(pip3 install:*)",
+      "Bash(life:*)",
+      "Bash(python3:*)",
+      "Bash(sqlite3:*)",
+      "Bash(curl -s http://localhost:11434/api/generate -d '{\"\"\"\"model\"\"\"\":\"\"\"\"llama3.2\"\"\"\",\"\"\"\"prompt\"\"\"\":\"\"\"\"test\"\"\"\"}')",
+      "Bash(pkill -f ollama)",
+      "Bash(curl -s http://localhost:11434/api/generate -d '{\"\"\"\"model\"\"\"\":\"\"\"\"llama3.2\"\"\"\",\"\"\"\"prompt\"\"\"\":\"\"\"\"hi\"\"\"\"}')",
+      "Bash(git:*)"
+    ]
+  }
+}

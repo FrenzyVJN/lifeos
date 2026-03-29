@@ -1,0 +1,14 @@
+[project]
+name = "lifeos"
+version = "0.1.0"
+dependencies = [
+    "typer[all]",
+    "sqlalchemy>=2.0.0",
+    "rich>=13.0.0",
+    "dateparser>=1.0.0",
+    "requests>=2.28.0",
+    "httpx>=0.24.0",
+]
+
+[project.scripts]
+life = "lifeos.main:app"
