@@ -8,6 +8,8 @@ dependencies = [
     "dateparser>=1.0.0",
     "requests>=2.28.0",
     "httpx>=0.24.0",
+    "sentence-transformers",
+    "numpy",
 ]
 
 [project.scripts]

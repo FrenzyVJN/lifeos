@@ -90,7 +90,9 @@ def print_project_tasks(project, tasks):
 
 def print_summary(data):
     date = data.get("date", datetime.utcnow())
+    streak = data.get("streak", 0)
     console.print(f"[bold] Today's Summary — {date.strftime('%b %d, %Y')}[/bold]")
+    console.print(f"[bold]🔥 Streak:[/bold] {streak} days")
     console.print()
 
     # Timeline
@@ -115,6 +117,16 @@ def print_summary(data):
         console.print("  [dim]No tasks created today[/dim]")
     console.print()
 
+    # Tasks completed today
+    tasks_done = data.get("tasks_done", [])
+    console.print(f"[bold]Tasks Completed Today ({len(tasks_done)})[/bold]")
+    if tasks_done:
+        for task in tasks_done:
+            console.print(f"  • {task.title}")
+    else:
+        console.print("  [dim]No tasks completed today[/dim]")
+    console.print()
+
     # Projects active today
     projects = data.get("projects", [])
     console.print(f"[bold]Projects Active Today ({len(projects)})[/bold]")
@@ -123,3 +135,48 @@ def print_summary(data):
             console.print(f"  • {project.name}")
     else:
         console.print("  [dim]No projects active today[/dim]")
+
+def print_weekly_summary(data):
+    start_date = data.get("start_date", datetime.utcnow().date())
+    end_date = data.get("end_date", datetime.utcnow().date())
+    console.print(f"[bold] Weekly Summary — {start_date} to {end_date}[/bold]")
+    console.print()
+
+    timeline = data.get("timeline", [])
+    tasks_created = data.get("tasks_created", [])
+    tasks_done = data.get("tasks_done", [])
+    projects = data.get("projects", [])
+    most_active = data.get("most_active_project")
+
+    console.print(f"[bold]Stats:[/bold]")
+    console.print(f"  Timeline entries: {len(timeline)}")
+    console.print(f"  Tasks created: {len(tasks_created)}")
+    console.print(f"  Tasks completed: {len(tasks_done)}")
+    console.print(f"  Projects active: {len(projects)}")
+    if most_active:
+        console.print(f"  Most active project: {most_active.name}")
+
+def print_search_results(query, results):
+    console.print(f"[bold]🔍 Search:[/bold] \"{query}\"")
+    console.print()
+
+    tasks = [(r[0], r[1]) for r in results if r[0] == "task"]
+    timeline = [(r[0], r[1]) for r in results if r[0] == "timeline"]
+
+    if tasks:
+        console.print("[bold]Tasks:[/bold]")
+        for _, task in tasks:
+            project_str = f" (Project: {task.project_id[:8] if task.project_id else '—'})"
+            console.print(f"  • {task.title}{project_str}")
+    else:
+        console.print("[bold]Tasks:[/bold]  [dim]No matches[/dim]")
+
+    if timeline:
+        console.print()
+        console.print("[bold]Timeline:[/bold]")
+        for _, entry in timeline:
+            time_str = entry.timestamp.strftime("%b %d · %H:%M")
+            console.print(f"  [dim]{time_str}[/dim]  {entry.content}")
+    else:
+        console.print()
+        console.print("[bold]Timeline:[/bold]  [dim]No matches[/dim]")

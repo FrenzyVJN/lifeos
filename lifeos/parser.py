@@ -89,3 +89,23 @@ def extract_tasks(user_input: str) -> list[dict]:
             "due_date": resolve_date(task.get("due_date"))
         })
     return resolved_tasks
+
+def call_ollama_text(prompt: str) -> str:
+    """Call Ollama and return raw text response (not JSON)."""
+    try:
+        response = requests.post(OLLAMA_URL, json={"model": OLLAMA_MODEL, "prompt": prompt}, timeout=60)
+        if response.status_code == 200:
+            full_response = ""
+            for line in response.text.strip().split('\n'):
+                line = line.strip()
+                if line:
+                    try:
+                        data = json.loads(line)
+                        if 'response' in data:
+                            full_response += data['response']
+                    except json.JSONDecodeError:
+                        continue
+            return full_response.strip()
+    except Exception:
+        pass
+    return ""

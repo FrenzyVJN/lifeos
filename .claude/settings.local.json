@@ -13,7 +13,9 @@
       "Bash(curl -s http://localhost:11434/api/generate -d '{\"\"\"\"model\"\"\"\":\"\"\"\"llama3.2\"\"\"\",\"\"\"\"prompt\"\"\"\":\"\"\"\"hi\"\"\"\"}')",
       "Bash(git:*)",
       "Bash(tmux kill-session:*)",
-      "Bash(ollama list:*)"
+      "Bash(ollama list:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)"
     ]
   }
 }
