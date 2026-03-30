@@ -17,7 +17,14 @@ def print_log_confirmation(entry, task_results):
             else:
                 console.print(f"[blue]Task created:[/blue] {task.title}")
 
-def print_tasks(tasks, title="Pending Tasks"):
+def get_project_name(project_id, projects_cache=None):
+    if not project_id:
+        return "—"
+    if projects_cache and project_id in projects_cache:
+        return projects_cache[project_id]
+    return project_id[:8]
+
+def print_tasks(tasks, title="Pending Tasks", projects_cache=None):
     if not tasks:
         console.print("[dim]No tasks found.[/dim]")
         return
@@ -26,11 +33,13 @@ def print_tasks(tasks, title="Pending Tasks"):
     table.add_column("ID", style="dim", width=8)
     table.add_column("Title", style="cyan")
     table.add_column("Due Date", style="green")
+    table.add_column("Project", style="blue")
     table.add_column("Status", style="yellow")
 
     for task in tasks:
         due_str = task.due_date.strftime("%b %d, %Y") if task.due_date else "—"
-        table.add_row(task.id[:8], task.title, due_str, task.status)
+        project_str = get_project_name(task.project_id, projects_cache)
+        table.add_row(task.id[:8], task.title, due_str, project_str, task.status)
 
     console.print(table)
 
@@ -46,3 +55,71 @@ def print_timeline(entries):
 
 def print_done_confirmation(task):
     console.print(f"[green]✓[/green] Task marked as done: {getattr(task, 'title', 'Unknown')}")
+
+def print_projects(projects):
+    if not projects:
+        console.print("[dim]No projects found.[/dim]")
+        return
+
+    table = Table(title=" Projects", show_header=True, header_style="bold magenta")
+    table.add_column("ID", style="dim", width=8)
+    table.add_column("Name", style="cyan")
+    table.add_column("Last Active", style="green")
+
+    for project in projects:
+        last_active = project.last_active.strftime("%b %d, %Y") if project.last_active else "—"
+        table.add_row(project.id[:8], project.name, last_active)
+
+    console.print(table)
+
+def print_project_tasks(project, tasks):
+    if not project:
+        return
+
+    table = Table(title=f" Project: {project.name}", show_header=True, header_style="bold magenta")
+    table.add_column("ID", style="dim", width=8)
+    table.add_column("Title", style="cyan")
+    table.add_column("Due Date", style="green")
+    table.add_column("Status", style="yellow")
+
+    for task in tasks:
+        due_str = task.due_date.strftime("%b %d, %Y") if task.due_date else "—"
+        table.add_row(task.id[:8], task.title, due_str, task.status)
+
+    console.print(table)
+
+def print_summary(data):
+    date = data.get("date", datetime.utcnow())
+    console.print(f"[bold] Today's Summary — {date.strftime('%b %d, %Y')}[/bold]")
+    console.print()
+
+    # Timeline
+    timeline = data.get("timeline", [])
+    console.print(f"[bold]Timeline ({len(timeline)} entries)[/bold]")
+    if timeline:
+        for entry in timeline:
+            time_str = entry.timestamp.strftime("%H:%M")
+            console.print(f"  [dim]{time_str}[/dim]  {entry.content}")
+    else:
+        console.print("  [dim]No entries today[/dim]")
+    console.print()
+
+    # Tasks created today
+    tasks = data.get("tasks_created", [])
+    console.print(f"[bold]Tasks Created Today ({len(tasks)})[/bold]")
+    if tasks:
+        for task in tasks:
+            due_str = f" (due {task.due_date.strftime('%b %d')})" if task.due_date else ""
+            console.print(f"  • {task.title}{due_str}")
+    else:
+        console.print("  [dim]No tasks created today[/dim]")
+    console.print()
+
+    # Projects active today
+    projects = data.get("projects", [])
+    console.print(f"[bold]Projects Active Today ({len(projects)})[/bold]")
+    if projects:
+        for project in projects:
+            console.print(f"  • {project.name}")
+    else:
+        console.print("  [dim]No projects active today[/dim]")

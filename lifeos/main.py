@@ -1,7 +1,7 @@
 import typer
 import lifeos.db as db_module
-from .db import init_db
-from .models import Base, Task, TimelineEntry  # Import models to register them with Base
+from .db import init_db, run_migrations
+from .models import Base, Task, TimelineEntry, Project  # Import models to register them with Base
 from . import actions, display
 
 app = typer.Typer()
@@ -10,6 +10,7 @@ def ensure_db():
     init_db()
     if db_module.ENGINE:
         Base.metadata.create_all(db_module.ENGINE)
+        run_migrations(db_module.ENGINE)
 
 @app.command()
 def log(text: str):
@@ -45,6 +46,28 @@ def timeline():
     ensure_db()
     entries = actions.get_timeline()
     display.print_timeline(entries)
+
+@app.command()
+def projects():
+    ensure_db()
+    project_list = actions.get_all_projects()
+    display.print_projects(project_list)
+
+@app.command()
+def project(project_id: str):
+    ensure_db()
+    project_obj, tasks = actions.get_project_tasks(project_id)
+    if project_obj:
+        display.print_project_tasks(project_obj, tasks)
+    else:
+        display.console.print(f"[red]Project {project_id} not found[/red]")
+        raise typer.Exit(code=1)
+
+@app.command()
+def summary():
+    ensure_db()
+    data = actions.get_daily_summary()
+    display.print_summary(data)
 
 if __name__ == "__main__":
     app()

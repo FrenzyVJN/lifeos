@@ -11,7 +11,9 @@
       "Bash(curl -s http://localhost:11434/api/generate -d '{\"\"\"\"model\"\"\"\":\"\"\"\"llama3.2\"\"\"\",\"\"\"\"prompt\"\"\"\":\"\"\"\"test\"\"\"\"}')",
       "Bash(pkill -f ollama)",
       "Bash(curl -s http://localhost:11434/api/generate -d '{\"\"\"\"model\"\"\"\":\"\"\"\"llama3.2\"\"\"\",\"\"\"\"prompt\"\"\"\":\"\"\"\"hi\"\"\"\"}')",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(tmux kill-session:*)",
+      "Bash(ollama list:*)"
     ]
   }
 }

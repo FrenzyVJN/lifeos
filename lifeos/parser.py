@@ -16,7 +16,30 @@ def safe_parse(raw: str) -> dict:
         return {"tasks": []}
 
 def call_ollama(user_input: str) -> dict:
-    prompt = f"""You are a task extraction assistant. Extract structured data from user input. Return ONLY valid JSON. No explanation. No markdown. No extra text. Format: {{"tasks": [{{"title": "short task title", "due_date": "natural language date or null"}}]}} Rules: - Keep titles short (3-6 words max) - Only extract actionable tasks - If no tasks found, return {{"tasks": []}} - Do not hallucinate tasks not mentioned User input: "{user_input}" """
+    prompt = f"""You are a task and project extraction assistant.
+
+Return ONLY valid JSON. No explanation. No markdown. No extra text.
+
+Format:
+{{
+  "tasks": [
+    {{
+      "title": "short task title",
+      "due_date": "natural language date or null"
+    }}
+  ],
+  "project": "project name or null"
+}}
+
+Rules:
+- Keep task titles short (3-6 words max)
+- Only extract actionable tasks
+- Project is the broader context (e.g. "SNUC Hacks", "Math Course", "LifeOS")
+- If no project context, return null for project
+- If no tasks found, return empty list
+- Do not hallucinate
+
+User input: "{user_input}" """
     try:
         response = requests.post(OLLAMA_URL, json={"model": OLLAMA_MODEL, "prompt": prompt}, timeout=60)
         if response.status_code == 200:
@@ -34,7 +57,7 @@ def call_ollama(user_input: str) -> dict:
             return safe_parse(full_response)
     except Exception:
         pass
-    return {"tasks": []}
+    return {"tasks": [], "project": None}
 
 TASK_PATTERNS = [
     r"\b(finish|complete|submit|do|study|prepare|fix|build|write|review)\b.{3,40}",
