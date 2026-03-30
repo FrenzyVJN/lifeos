@@ -24,6 +24,9 @@ def get_project_name(project_id, projects_cache=None):
         return projects_cache[project_id]
     return project_id[:8]
 
+def get_priority_indicator(priority):
+    return {"high": "[red]🔴 high[/red]", "low": "[green]🟢 low[/green]", "medium": "[yellow]🟡 med[/yellow]"}.get(priority, "🟡 med")
+
 def print_tasks(tasks, title="Pending Tasks", projects_cache=None):
     if not tasks:
         console.print("[dim]No tasks found.[/dim]")
@@ -33,13 +36,15 @@ def print_tasks(tasks, title="Pending Tasks", projects_cache=None):
     table.add_column("ID", style="dim", width=8)
     table.add_column("Title", style="cyan")
     table.add_column("Due Date", style="green")
+    table.add_column("Priority", style="red")
     table.add_column("Project", style="blue")
     table.add_column("Status", style="yellow")
 
     for task in tasks:
         due_str = task.due_date.strftime("%b %d, %Y") if task.due_date else "—"
         project_str = get_project_name(task.project_id, projects_cache)
-        table.add_row(task.id[:8], task.title, due_str, project_str, task.status)
+        priority_str = get_priority_indicator(task.priority)
+        table.add_row(task.id[:8], task.title, due_str, priority_str, project_str, task.status)
 
     console.print(table)
 
@@ -91,11 +96,20 @@ def print_project_tasks(project, tasks):
 def print_summary(data):
     date = data.get("date", datetime.utcnow())
     streak = data.get("streak", 0)
+    mood_today = data.get("mood_today")
+    avg_mood = data.get("avg_mood", 0)
+
     console.print(f"[bold] Today's Summary — {date.strftime('%b %d, %Y')}[/bold]")
     console.print(f"[bold]🔥 Streak:[/bold] {streak} days")
+
+    if mood_today:
+        mood_str = mood_today.mood
+        console.print(f"[bold]😊 Mood Today:[/bold] {mood_str} ({mood_today.score}/5)")
+    if avg_mood > 0:
+        console.print(f"[bold]📈 7-day average:[/bold] {avg_mood}/5")
+
     console.print()
 
-    # Timeline
     timeline = data.get("timeline", [])
     console.print(f"[bold]Timeline ({len(timeline)} entries)[/bold]")
     if timeline:
@@ -106,7 +120,6 @@ def print_summary(data):
         console.print("  [dim]No entries today[/dim]")
     console.print()
 
-    # Tasks created today
     tasks = data.get("tasks_created", [])
     console.print(f"[bold]Tasks Created Today ({len(tasks)})[/bold]")
     if tasks:
@@ -117,7 +130,6 @@ def print_summary(data):
         console.print("  [dim]No tasks created today[/dim]")
     console.print()
 
-    # Tasks completed today
     tasks_done = data.get("tasks_done", [])
     console.print(f"[bold]Tasks Completed Today ({len(tasks_done)})[/bold]")
     if tasks_done:
@@ -127,7 +139,6 @@ def print_summary(data):
         console.print("  [dim]No tasks completed today[/dim]")
     console.print()
 
-    # Projects active today
     projects = data.get("projects", [])
     console.print(f"[bold]Projects Active Today ({len(projects)})[/bold]")
     if projects:
@@ -180,3 +191,21 @@ def print_search_results(query, results):
     else:
         console.print()
         console.print("[bold]Timeline:[/bold]  [dim]No matches[/dim]")
+
+def print_mood_history(mood_by_day):
+    console.print("[bold] Mood — Last 7 Days[/bold]")
+    if not mood_by_day:
+        console.print("[dim]No mood data yet[/dim]")
+        return
+
+    for day, score in mood_by_day.items():
+        bar = "█" * score + "░" * (5 - score)
+        console.print(f"{day}  {bar}  {score}/5")
+
+def print_report(md):
+    console.print(md)
+
+def print_chat(question, answer):
+    console.print(f"[bold]❯ life chat[/bold] \"{question}\"")
+    console.print()
+    console.print(answer)

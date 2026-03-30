@@ -19,8 +19,29 @@ def get_session() -> Session:
 
 def run_migrations(engine):
     inspector = inspect(engine)
-    columns = [c["name"] for c in inspector.get_columns("tasks")]
-    if "project_id" not in columns:
-        with engine.connect() as conn:
+
+    # Migrate tasks table
+    task_cols = [c["name"] for c in inspector.get_columns("tasks")]
+    with engine.connect() as conn:
+        if "project_id" not in task_cols:
             conn.execute(text("ALTER TABLE tasks ADD COLUMN project_id TEXT"))
-            conn.commit()
+        if "priority" not in task_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN priority TEXT DEFAULT 'medium'"))
+        if "recurrence" not in task_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN recurrence TEXT"))
+        if "next_due" not in task_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN next_due DATETIME"))
+        conn.commit()
+
+    # Migrate projects table
+    project_cols = [c["name"] for c in inspector.get_columns("projects")]
+    with engine.connect() as conn:
+        if "status" not in project_cols:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'"))
+        conn.commit()
+
+    # Create mood_entries table if not exists
+    table_names = inspector.get_table_names()
+    if "mood_entries" not in table_names:
+        from .models import Base, MoodEntry
+        Base.metadata.create_all(engine, tables=[MoodEntry.__table__])

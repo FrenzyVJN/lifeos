@@ -25,7 +25,9 @@ Format:
   "tasks": [
     {{
       "title": "short task title",
-      "due_date": "natural language date or null"
+      "due_date": "natural language date or null",
+      "priority": "high|medium|low",
+      "recurrence": "daily|weekly|weekday|weekend|null"
     }}
   ],
   "project": "project name or null"
@@ -34,6 +36,8 @@ Format:
 Rules:
 - Keep task titles short (3-6 words max)
 - Only extract actionable tasks
+- Priority: "high" for exams/deadlines/urgent, "low" for someday/no due date, "medium" otherwise
+- Recurrence: "daily" for every day, "weekly" for every week, "weekday" for Mon-Fri, "weekend" for Sat-Sun, null if not recurring
 - Project is the broader context (e.g. "SNUC Hacks", "Math Course", "LifeOS")
 - If no project context, return null for project
 - If no tasks found, return empty list
@@ -41,7 +45,7 @@ Rules:
 
 User input: "{user_input}" """
     try:
-        response = requests.post(OLLAMA_URL, json={"model": OLLAMA_MODEL, "prompt": prompt}, timeout=60)
+        response = requests.post(OLLAMA_URL, json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}, timeout=60)
         if response.status_code == 200:
             # Ollama returns NDJSON (newline-delimited JSON) streaming responses
             full_response = ""
@@ -69,7 +73,7 @@ def rule_based_extract(text: str) -> list[dict]:
     for pattern in TASK_PATTERNS:
         matches = re.findall(pattern, text, re.IGNORECASE)
         for match in matches:
-            tasks.append({"title": match.strip(), "due_date": None})
+            tasks.append({"title": match.strip(), "due_date": None, "priority": "medium", "recurrence": None})
     return tasks
 
 def resolve_date(raw: str | None) -> Optional[datetime]:
@@ -86,9 +90,43 @@ def extract_tasks(user_input: str) -> list[dict]:
     for task in result.get("tasks", []):
         resolved_tasks.append({
             "title": task["title"],
-            "due_date": resolve_date(task.get("due_date"))
+            "due_date": resolve_date(task.get("due_date")),
+            "priority": task.get("priority", "medium"),
+            "recurrence": task.get("recurrence")
         })
     return resolved_tasks
+
+def extract_mood_score(mood_text: str) -> int:
+    prompt = f"""Rate this mood on a scale of 1-5:
+{mood_text}
+
+Return ONLY a number 1-5. Rules:
+- "great", "productive", "amazing", "excellent" → 5
+- "good", "focused", "happy" → 4
+- "okay", "meh", "neutral" → 3
+- "tired", "distracted", "unmotivated" → 2
+- "bad", "terrible", "burned out", "stressed" → 1
+
+Respond with only the number."""
+    try:
+        response = requests.post(OLLAMA_URL, json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}, timeout=30)
+        if response.status_code == 200:
+            for line in response.text.strip().split('\n'):
+                line = line.strip()
+                if line:
+                    try:
+                        data = json.loads(line)
+                        if 'response' in data:
+                            score_text = data['response'].strip()
+                            # Extract just the number
+                            match = re.search(r'\d', score_text)
+                            if match:
+                                return int(match.group())
+                    except json.JSONDecodeError:
+                        continue
+    except Exception:
+        pass
+    return 3  # default to medium
 
 def call_ollama_text(prompt: str) -> str:
     """Call Ollama and return raw text response (not JSON)."""

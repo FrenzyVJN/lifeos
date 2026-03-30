@@ -22,14 +22,15 @@ def log(text: str):
     display.print_log_confirmation(entry, results)
 
 @app.command()
-def tasks(done: bool = False):
+def tasks(done: bool = False, high: bool = False, today: bool = False):
     ensure_db()
     if done:
         task_list = actions.get_done_tasks()
         display.print_tasks(task_list, title="Done Tasks")
     else:
-        task_list = actions.get_pending_tasks()
-        display.print_tasks(task_list)
+        task_list = actions.get_pending_tasks(priority="high" if high else None, today=today)
+        title = "High Priority Tasks" if high else ("Due Today" if today else "Pending Tasks")
+        display.print_tasks(task_list, title=title)
 
 @app.command()
 def done(task_id: str):
@@ -126,6 +127,32 @@ def streak():
     ensure_db()
     s = actions.get_streak()
     display.console.print(f"[bold]🔥 Current streak:[/bold] {s} days")
+
+@app.command()
+def mood(mood_text: str):
+    ensure_db()
+    entry = actions.log_mood(mood_text)
+    display.console.print(f"[green]✓[/green] Mood logged: {entry.mood} ({entry.score}/5)")
+
+@app.command()
+def mood_history():
+    ensure_db()
+    history = actions.get_mood_history()
+    display.print_mood_history(history)
+
+@app.command()
+def report(week: bool = False, out: str = None):
+    ensure_db()
+    md = actions.generate_report(week=week, out_file=out)
+    display.print_report(md)
+    if out:
+        display.console.print(f"[green]✓[/green] Report saved to {out}")
+
+@app.command()
+def chat(question: str):
+    ensure_db()
+    answer = actions.chat(question)
+    display.print_chat(question, answer)
 
 if __name__ == "__main__":
     app()
