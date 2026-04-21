@@ -4,7 +4,7 @@ from sqlalchemy import func
 from .models import Task, TimelineEntry, Project, MoodEntry
 from .parser import extract_tasks, call_ollama, call_ollama_text, resolve_date, extract_mood_score
 from .db import get_session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Embeddings model (lazy loaded, cached)
 _model = None
@@ -51,7 +51,7 @@ def similarity(a: str, b: str) -> float:
 def next_occurrence(recurrence: str, from_date: datetime = None) -> datetime:
     if not recurrence:
         return None
-    from_date = from_date or datetime.utcnow()
+    from_date = from_date or datetime.now(timezone.utc)
     if recurrence == "daily":
         return from_date + timedelta(days=1)
     elif recurrence == "weekly":
@@ -109,13 +109,13 @@ def log_input(user_input: str) -> tuple[TimelineEntry, list[dict]]:
         norm_project_name = normalize(project_name)
         project = find_duplicate_project(session, norm_project_name)
         if project:
-            project.last_active = datetime.utcnow()
+            project.last_active = datetime.now(timezone.utc)
             session.commit()
         else:
             project = Project(
                 name=project_name,
                 normalized_name=norm_project_name,
-                last_active=datetime.utcnow()
+                last_active=datetime.now(timezone.utc)
             )
             session.add(project)
             session.commit()
@@ -130,11 +130,12 @@ def log_input(user_input: str) -> tuple[TimelineEntry, list[dict]]:
         recurrence = task_data.get("recurrence")
 
         if existing:
-            if parsed_due_date:
-                existing.due_date = parsed_due_date
-            existing.updated_at = datetime.utcnow()
+            # Always update the project if one was extracted this session
             if project and not existing.project_id:
                 existing.project_id = project.id
+            if parsed_due_date:
+                existing.due_date = parsed_due_date
+            existing.updated_at = datetime.now(timezone.utc)
             session.commit()
             task_results.append({"task": existing, "action": "updated"})
         else:
@@ -164,7 +165,7 @@ def get_pending_tasks(priority: str = None, today: bool = False) -> list[Task]:
     if priority:
         query = query.filter(Task.priority == priority)
     if today:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         query = query.filter(
             (Task.due_date != None) &
             (Task.due_date <= now)
@@ -188,7 +189,7 @@ def mark_task_done(task_id: str) -> Task | None:
     task = session.query(Task).filter(Task.id == task_id).first()
     if task:
         task.status = "done"
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
         session.commit()
 
         # Handle recurring task - create next occurrence
@@ -245,7 +246,7 @@ def get_daily_summary() -> dict:
     session = get_session()
     session.expire_on_commit = False
 
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
 
     timeline_today = session.query(TimelineEntry).filter(
@@ -295,7 +296,7 @@ def get_daily_summary() -> dict:
         "streak": streak,
         "mood_today": mood_today,
         "avg_mood": round(avg_mood, 1),
-        "date": datetime.utcnow()
+        "date": datetime.now(timezone.utc)
     }
 
 def get_streak_internal(session: Session) -> int:
@@ -308,7 +309,7 @@ def get_streak_internal(session: Session) -> int:
 
     dates = sorted(set([e.timestamp.date() for e in entries]), reverse=True)
     streak = 0
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
 
     for i, date in enumerate(dates):
         expected = today - timedelta(days=i)
@@ -355,10 +356,13 @@ def generate_digest() -> str:
     session = get_session()
     session.expire_on_commit = False
 
-    today = datetime.utcnow().date()
+    # Use proper UTC datetime bounds instead of func.date()
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = today + timedelta(days=1)
 
     entries = session.query(TimelineEntry).filter(
-        func.date(TimelineEntry.timestamp) == today
+        TimelineEntry.timestamp >= today,
+        TimelineEntry.timestamp < tomorrow
     ).all()
 
     if not entries:
@@ -367,12 +371,14 @@ def generate_digest() -> str:
         return "Nothing logged today. Run `life log` to start tracking."
 
     tasks_created = session.query(Task).filter(
-        func.date(Task.created_at) == today
+        Task.created_at >= today,
+        Task.created_at < tomorrow
     ).all()
 
     tasks_done = session.query(Task).filter(
         Task.status == "done",
-        func.date(Task.updated_at) == today
+        Task.updated_at >= today,
+        Task.updated_at < tomorrow
     ).all()
 
     context = f"""Timeline entries today:
@@ -404,7 +410,7 @@ def get_weekly_summary() -> dict:
     session = get_session()
     session.expire_on_commit = False
 
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = today - timedelta(days=7)
 
     timeline_week = session.query(TimelineEntry).filter(
@@ -457,7 +463,7 @@ def edit_task(task_id: str, title: str = None, due: str = None) -> Task | None:
             task.normalized_title = normalize(title)
         if due:
             task.due_date = resolve_date(due)
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
         session.commit()
     session.expunge(task) if task else None
     session.close()
@@ -469,7 +475,7 @@ def delete_task(task_id: str) -> bool:
     task = session.query(Task).filter(Task.id == task_id).first()
     if task:
         task.status = "deleted"
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
         session.commit()
         session.close()
         return True
@@ -508,7 +514,7 @@ def get_mood_history(days: int = 7) -> list[dict]:
     session = get_session()
     session.expire_on_commit = False
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     start = now - timedelta(days=days)
 
     entries = session.query(MoodEntry).filter(
@@ -529,7 +535,7 @@ def chat(question: str) -> str:
     session = get_session()
     session.expire_on_commit = False
 
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
     entries = session.query(TimelineEntry).filter(
         TimelineEntry.timestamp >= week_ago
@@ -569,7 +575,7 @@ def generate_report(week: bool = False, out_file: str = None) -> str:
     session.expire_on_commit = False
 
     if week:
-        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         start = today - timedelta(days=7)
         entries = session.query(TimelineEntry).filter(
             TimelineEntry.timestamp >= start
@@ -585,7 +591,7 @@ def generate_report(week: bool = False, out_file: str = None) -> str:
         ).all()
         date_str = f"{start.strftime('%b %d')} to {today.strftime('%b %d, %Y')}"
     else:
-        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         tomorrow = today + timedelta(days=1)
         entries = session.query(TimelineEntry).filter(
             TimelineEntry.timestamp >= today,

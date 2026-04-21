@@ -3,6 +3,7 @@ import lifeos.db as db_module
 from .db import init_db, run_migrations
 from .models import Base, Task, TimelineEntry, Project  # Import models to register them with Base
 from . import actions, display
+from .parser import get_ollama_warning
 
 app = typer.Typer()
 
@@ -18,6 +19,8 @@ def log(text: str):
     if not text.strip():
         display.console.print("[red]Please provide some text[/red]")
         raise typer.Exit(code=1)
+    if (warning := get_ollama_warning()):
+        display.console.print(warning)
     entry, results = actions.log_input(text)
     display.print_log_confirmation(entry, results)
 
@@ -73,10 +76,10 @@ def summary():
 @app.command()
 def digest():
     ensure_db()
-    from datetime import datetime
+    from datetime import datetime, timezone
     display.console.print("[dim]Generating digest...[/dim]")
     digest_text = actions.generate_digest()
-    display.console.print(f"\n[dodger_blue1]Daily Digest — {datetime.utcnow().strftime('%b %d, %Y')}[/dodger_blue1]")
+    display.console.print(f"\n[dodger_blue1]Daily Digest — {datetime.now(timezone.utc).strftime('%b %d, %Y')}[/dodger_blue1]")
     display.console.print(f"\n{digest_text}")
 
 @app.command()

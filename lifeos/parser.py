@@ -6,7 +6,25 @@ import dateparser
 from typing import Optional
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5:7b"
+OLLAMA_MODEL = "qwen3.5:2b"
+
+def is_ollama_available() -> bool:
+    """Check if Ollama is running and available."""
+    try:
+        response = requests.get("http://localhost:11434/api/tags", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+def get_ollama_warning() -> str | None:
+    """Return a warning message if Ollama is not available, None otherwise."""
+    if not is_ollama_available():
+        return (
+            "[yellow]⚠ Ollama is not running.[/yellow] "
+            "Task extraction will use fallback rules only. "
+            "Start Ollama with: [dim]ollama serve[/dim]"
+        )
+    return None
 
 def safe_parse(raw: str) -> dict:
     raw = re.sub(r"```json|```", "", raw).strip()

@@ -2,7 +2,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
-from datetime import datetime
+from datetime import datetime, timezone
 
 console = Console()
 
@@ -94,7 +94,7 @@ def print_project_tasks(project, tasks):
     console.print(table)
 
 def print_summary(data):
-    date = data.get("date", datetime.utcnow())
+    date = data.get("date", datetime.now(timezone.utc))
     streak = data.get("streak", 0)
     mood_today = data.get("mood_today")
     avg_mood = data.get("avg_mood", 0)
@@ -148,8 +148,8 @@ def print_summary(data):
         console.print("  [dim]No projects active today[/dim]")
 
 def print_weekly_summary(data):
-    start_date = data.get("start_date", datetime.utcnow().date())
-    end_date = data.get("end_date", datetime.utcnow().date())
+    start_date = data.get("start_date", datetime.now(timezone.utc).date())
+    end_date = data.get("end_date", datetime.now(timezone.utc).date())
     console.print(f"[bold] Weekly Summary — {start_date} to {end_date}[/bold]")
     console.print()
 
